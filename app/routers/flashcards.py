@@ -11,7 +11,7 @@ from app.schemas.flashcard import (
     FlashcardGenerateResponse,
     FlashcardItem,
 )
-from app.services import anthropic_service, spaced_repetition
+from app.services import llm_service, spaced_repetition
 
 router = APIRouter()
 
@@ -22,7 +22,7 @@ async def generate_flashcards(
     settings: Settings = Depends(get_settings),
 ) -> FlashcardGenerateResponse:
     try:
-        items: list[FlashcardItem] = await anthropic_service.generate_flashcards(
+        items: list[FlashcardItem] = await llm_service.generate_flashcards(
             node_title=request.nodeTitle,
             node_description=request.nodeDescription,
             quantity=request.quantity,

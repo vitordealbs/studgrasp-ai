@@ -20,7 +20,7 @@ def mock_flashcard_items():
     ]
 
 
-@patch("app.routers.flashcards.anthropic_service.generate_flashcards", new_callable=AsyncMock)
+@patch("app.routers.flashcards.llm_service.generate_flashcards", new_callable=AsyncMock)
 @patch("app.routers.flashcards.httpx.AsyncClient")
 def test_generate_flashcards_success(mock_httpx_cls, mock_generate, client, mock_flashcard_items):
     mock_generate.return_value = mock_flashcard_items
@@ -42,7 +42,7 @@ def test_generate_flashcards_success(mock_httpx_cls, mock_generate, client, mock
     assert len(body["flashcards"]) == 2
 
 
-@patch("app.routers.flashcards.anthropic_service.generate_flashcards", new_callable=AsyncMock)
+@patch("app.routers.flashcards.llm_service.generate_flashcards", new_callable=AsyncMock)
 def test_generate_flashcards_anthropic_error(mock_generate, client):
     mock_generate.side_effect = RuntimeError("Claude unavailable")
 

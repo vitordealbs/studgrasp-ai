@@ -8,20 +8,19 @@ Construído com FastAPI (Python), integra-se ao backend Java Spring Boot via HTT
 
 ## Versões
 
-| Tecnologia        | Versão          |
-|-------------------|-----------------|
-| Python            | 3.11+           |
-| FastAPI           | 0.115.5         |
-| Uvicorn           | 0.32.1          |
-| Anthropic SDK     | >= 0.50.0       |
-| Claude Model      | claude-opus-4-7 |
-| Playwright        | 1.49.0          |
-| Celery            | 5.4.0           |
-| SQLAlchemy        | 2.0.36          |
-| pydantic-settings | 2.6.1           |
-| httpx             | 0.28.1          |
-| Redis             | 5.2.1           |
-| pytest            | 8.3.4           |
+| Tecnologia        | Versão   |
+|-------------------|----------|
+| Python            | 3.11+    |
+| FastAPI           | 0.115.5  |
+| Uvicorn           | 0.32.1   |
+| OpenAI SDK        | >= 1.50.0 |
+| Playwright        | 1.49.0   |
+| Celery            | 5.4.0    |
+| SQLAlchemy        | 2.0.36   |
+| pydantic-settings | 2.6.1    |
+| httpx             | 0.28.1   |
+| Redis             | 5.2.1    |
+| pytest            | 8.3.4    |
 
 ---
 
@@ -66,14 +65,32 @@ playwright install chromium
 cp .env.example .env
 ```
 
-Edite o `.env` com seus valores:
+Edite o `.env` escolhendo o provedor LLM desejado:
 
 ```env
-ANTHROPIC_API_KEY=sk-ant-...
+# DeepSeek (barato, recomendado para desenvolvimento)
+LLM_API_KEY=sk-...
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-chat
+
 JAVA_API_URL=http://localhost:8080
 DB_URL=postgresql://usuario:senha@localhost:5432/studgrasp
 REDIS_URL=redis://localhost:6379
 ```
+
+#### Provedores suportados
+
+O serviço usa a API compatível com OpenAI — qualquer provedor que siga esse padrão funciona sem alterar código.
+
+| Provedor    | `LLM_BASE_URL`                        | `LLM_MODEL`               | Custo       |
+|-------------|---------------------------------------|---------------------------|-------------|
+| DeepSeek    | `https://api.deepseek.com`            | `deepseek-chat`           | ~$0.14/1M   |
+| Groq        | `https://api.groq.com/openai/v1`      | `llama-3.3-70b-versatile` | Grátis*     |
+| OpenAI      | `https://api.openai.com/v1`           | `gpt-4o-mini`             | ~$0.15/1M   |
+| Anthropic   | `https://api.anthropic.com/v1`        | `claude-opus-4-7`         | ~$5.00/1M   |
+| Ollama      | `http://localhost:11434/v1`           | `llama3.2`                | Grátis      |
+
+\* Groq tem limites de requisições no plano gratuito.
 
 ---
 
@@ -125,13 +142,15 @@ celery -A tasks.scraper_task.celery_app worker --loglevel=info
 
 O endpoint é executado de forma síncrona e pode levar alguns minutos. Recomendado rodar **uma única vez** para popular o banco.
 
-**Fluxo interno por trilha:**
-1. `GET /api/roadmaps/career/{careerType}` → verifica se o roadmap já existe
-2. Se não existir → `POST /api/roadmaps` para criá-lo
-3. Scrapa os nós do roadmap.sh (extrai `window.__NEXT_DATA__`, com fallback DOM)
-4. `POST /api/roadmap-nodes` para cada nó encontrado
+**Fluxo interno:**
+1. Acessa `https://roadmap.sh` e descobre dinamicamente **todas** as trilhas disponíveis via `window.__NEXT_DATA__` (fallback por links DOM)
+2. Para cada trilha descoberta:
+   - `GET /api/roadmaps/career/{careerType}` → verifica se já existe
+   - Se não existir → `POST /api/roadmaps` para criá-la automaticamente
+   - Scrapa os nós da página da trilha (`window.__NEXT_DATA__`, fallback DOM)
+   - `POST /api/roadmap-nodes` para cada nó encontrado
 
-**Trilhas suportadas:** `backend`, `frontend`, `devops`, `full-stack`, `android`, `ai-data-scientist`
+**Trilhas:** descobertas automaticamente — todas as disponíveis no roadmap.sh na data da execução.
 
 **Resposta:**
 ```json
@@ -289,8 +308,8 @@ pytest tests/ -v --tb=short -q
 | `tests/test_health.py`            | Endpoint `GET /health`                                             |
 | `tests/test_flashcards.py`        | `POST /ai/flashcards/generate` e `GET /ai/review/{userId}`         |
 | `tests/test_analysis.py`          | `GET /ai/analysis/{userId}`                                        |
-| `tests/test_anthropic_service.py` | Geração de flashcards com Claude (mockado) e parsing do JSON       |
-| `tests/test_scraper_service.py`   | `_get_or_create_roadmap`, parsers `__NEXT_DATA__`/DOM, save nodes  |
+| `tests/test_llm_service.py`       | Geração de flashcards com LLM (mockado), parsing JSON, modelo usado |
+| `tests/test_scraper_service.py`   | Descoberta dinâmica de slugs, parsers `__NEXT_DATA__`/DOM, save    |
 | `tests/test_spaced_repetition.py` | Algoritmo SM-2 (6 casos) e queries SQL diretas (mockadas)          |
 
 ---
@@ -309,7 +328,7 @@ studgrasp-ai/
 │   │   ├── analysis.py
 │   │   └── scraper.py       # POST /ai/scrape
 │   ├── services/            # Lógica de negócio
-│   │   ├── anthropic_service.py   # Chamadas ao Claude (streaming)
+│   │   ├── llm_service.py         # Geração com LLM (provedor configurável)
 │   │   ├── spaced_repetition.py   # SM-2 + queries PostgreSQL
 │   │   └── scraper_service.py     # Playwright + get-or-create roadmap
 │   └── schemas/             # Modelos Pydantic
