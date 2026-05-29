@@ -1,0 +1,29 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      DB_URL: postgresql://studgrasp:studgrasp@postgres:5432/studgrasp
+      REDIS_URL: redis://redis:6379
+      JAVA_API_URL: http://api:8080
+      SCRAPER_API_KEY: ${SCRAPER_API_KEY:-studgrasp-scraper-dev-key-change-in-production}
+    networks:
+      - studgrasp_network
+
+  celery-worker:
+    build: .
+    command: celery -A tasks.scraper_task.celery_app worker --loglevel=info
+    env_file: .env
+    environment:
+      DB_URL: postgresql://studgrasp:studgrasp@postgres:5432/studgrasp
+      REDIS_URL: redis://redis:6379
+      JAVA_API_URL: http://api:8080
+      SCRAPER_API_KEY: ${SCRAPER_API_KEY:-studgrasp-scraper-dev-key-change-in-production}
+    networks:
+      - studgrasp_network
+
+networks:
+  studgrasp_network:
+    external: true

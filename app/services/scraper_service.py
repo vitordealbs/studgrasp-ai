@@ -1,9 +1,12 @@
 import json
 import logging
+import os
 import re
 from typing import Any, Dict, List, Optional
 
 import httpx
+
+_SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "")
 from playwright.sync_api import sync_playwright, Page
 
 logger = logging.getLogger(__name__)
@@ -112,7 +115,7 @@ def _discover_roadmap_slugs(page: Page) -> List[str]:
 # ── Java API ──────────────────────────────────────────────────────────────────
 
 def _get_or_create_roadmap(slug: str, java_api_url: str) -> str:
-    with httpx.Client(base_url=java_api_url, timeout=30) as client:
+    with httpx.Client(base_url=java_api_url, timeout=30, headers={"X-API-Key": _SCRAPER_API_KEY}) as client:
         # Tenta match exato primeiro
         resp = client.get(f"/api/roadmaps/career/{slug}")
         if resp.status_code == 200:
@@ -241,7 +244,7 @@ def _scrape_roadmap(slug: str, roadmap_uuid: str) -> List[Dict]:
 # ── Save ──────────────────────────────────────────────────────────────────────
 
 def _save_nodes(nodes: List[Dict], java_api_url: str) -> None:
-    with httpx.Client(base_url=java_api_url, timeout=30) as client:
+    with httpx.Client(base_url=java_api_url, timeout=30, headers={"X-API-Key": _SCRAPER_API_KEY}) as client:
         for node in nodes:
             try:
                 resp = client.post("/api/roadmap-nodes", json=node)
