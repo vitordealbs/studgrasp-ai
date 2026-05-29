@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 
 from app.config import Settings, get_settings
-from app.database import get_db
 from app.main import app
 
 

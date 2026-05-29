@@ -1,358 +1,210 @@
-# studgrasp-ai
+# 🧠 StudGrasp AI
 
-Serviço de inteligência artificial do **StudGrasp** — plataforma de aprendizado de CS com flashcards, trilhas de conhecimento e revisão espaçada.
+> AI microservice powering the StudGrasp learning platform — flashcard generation, personalized insights, and roadmap scraping.
 
-Construído com FastAPI (Python), integra-se ao backend Java Spring Boot via HTTP e ao banco PostgreSQL compartilhado.
-
----
-
-## Versões
-
-| Tecnologia        | Versão   |
-|-------------------|----------|
-| Python            | 3.11+    |
-| FastAPI           | 0.115.5  |
-| Uvicorn           | 0.32.1   |
-| OpenAI SDK        | >= 1.50.0 |
-| Playwright        | 1.49.0   |
-| Celery            | 5.4.0    |
-| SQLAlchemy        | 2.0.36   |
-| pydantic-settings | 2.6.1    |
-| httpx             | 0.28.1   |
-| Redis             | 5.2.1    |
-| pytest            | 8.3.4    |
+*IMAGEM QUE AINDA VOU COLOCAR AQUI*
 
 ---
 
-## Pré-requisitos
+## 📖 Overview
+
+**StudGrasp AI** is a Python microservice built with **FastAPI** that acts as the intelligence layer of the StudGrasp platform. It communicates exclusively with the [Java Spring Boot backend](https://github.com/vitordealbs/studgrasp-api) via HTTP — the frontend never talks to this service directly.
+
+*IMAGEM QUE AINDA VOU COLOCAR AQUI*
+
+### What it does
+
+- 🃏 **Flashcard generation** — uses any OpenAI-compatible LLM to generate question/answer pairs for a given topic
+- 🤖 **Personalized insights** — analyzes a student's spaced repetition data and returns actionable study recommendations
+- 🏫 **Class insights** — aggregates class-wide performance and generates advisor-facing analytics
+- 🗺️ **Roadmap scraper** — crawls [roadmap.sh](https://roadmap.sh) and populates all learning tracks into the Java backend
+
+---
+
+## 🏗️ Architecture
+
+```
+Frontend  →  Java Spring Boot API  →  studgrasp-ai (this service)
+                    ↑
+           studgrasp-ai (scraper writes data via Java API)
+```
+
+*IMAGEM QUE AINDA VOU COLOCAR AQUI*
+
+The Java backend calls this service for all AI operations. This service calls the Java API to read performance data and persist generated content.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | FastAPI 0.115 + Uvicorn |
+| LLM Client | OpenAI SDK (provider-agnostic) |
+| HTTP Client | httpx (async) |
+| Task Queue | Celery + Redis |
+| Scraping | Playwright (Chromium) |
+| Validation | Pydantic v2 + pydantic-settings |
+| Testing | pytest + pytest-asyncio |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
 
 - Python 3.11+
-- PostgreSQL (compartilhado com o Java API — não cria tabelas novas)
-- Redis (usado pelo Celery, opcional se não usar a task manual)
-- Java Spring Boot API rodando em `http://localhost:8080`
-- Chave de API da Anthropic
+- Redis (for the Celery scraper task)
+- The [studgrasp-api](https://github.com/vitordealbs/studgrasp-api) Java backend running
+- An API key for any OpenAI-compatible LLM provider
 
----
-
-## Configuração
-
-### 1. Clone e entre no projeto
+### 1. Clone the repository
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/vitordealbs/studgrasp-ai.git
 cd studgrasp-ai
 ```
 
-### 2. Crie o ambiente virtual e instale as dependências
+### 2. Create a virtual environment
 
 ```bash
 python -m venv venv
-source venv/bin/activate        # Linux/macOS
-# venv\Scripts\activate         # Windows
-
+source venv/bin/activate      # Linux/macOS
+# venv\Scripts\activate       # Windows
 pip install -r requirements.txt
 ```
 
-### 3. Instale o browser do Playwright
+### 3. Install Playwright browser
 
 ```bash
 playwright install chromium
 ```
 
-### 4. Configure as variáveis de ambiente
+### 4. Set up environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-Edite o `.env` escolhendo o provedor LLM desejado:
+Edit `.env` with your configuration:
 
 ```env
-# DeepSeek (barato, recomendado para desenvolvimento)
-LLM_API_KEY=sk-...
+LLM_API_KEY=your-key-here
 LLM_BASE_URL=https://api.deepseek.com
 LLM_MODEL=deepseek-chat
 
 JAVA_API_URL=http://localhost:8080
-DB_URL=postgresql://usuario:senha@localhost:5432/studgrasp
+SCRAPER_API_KEY=studgrasp-scraper-dev-key-change-in-production
 REDIS_URL=redis://localhost:6379
 ```
 
-#### Provedores suportados
-
-O serviço usa a API compatível com OpenAI — qualquer provedor que siga esse padrão funciona sem alterar código.
-
-| Provedor    | `LLM_BASE_URL`                        | `LLM_MODEL`               | Custo       |
-|-------------|---------------------------------------|---------------------------|-------------|
-| DeepSeek    | `https://api.deepseek.com`            | `deepseek-chat`           | ~$0.14/1M   |
-| Groq        | `https://api.groq.com/openai/v1`      | `llama-3.3-70b-versatile` | Grátis*     |
-| OpenAI      | `https://api.openai.com/v1`           | `gpt-4o-mini`             | ~$0.15/1M   |
-| Anthropic   | `https://api.anthropic.com/v1`        | `claude-opus-4-7`         | ~$5.00/1M   |
-| Ollama      | `http://localhost:11434/v1`           | `llama3.2`                | Grátis      |
-
-\* Groq tem limites de requisições no plano gratuito.
-
----
-
-## Build e execução
-
-### Iniciar a API
+### 5. Run the service
 
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-A API estará disponível em `http://localhost:8000`.
+Interactive docs available at **http://localhost:8000/docs**
 
-Documentação interativa: `http://localhost:8000/docs`
+---
 
-### Iniciar o worker Celery (opcional)
+## 🐳 Running with Docker
 
-Necessário apenas se quiser disparar o scraper via Celery em vez do endpoint HTTP.
+This service is designed to run alongside the Java backend on a shared Docker network.
+
+Make sure the Java backend is running first with `studgrasp_network` created, then:
 
 ```bash
-celery -A tasks.scraper_task.celery_app worker --loglevel=info
+docker compose up --build
 ```
 
 ---
 
-## Endpoints implementados
+## 🤖 LLM Providers
 
-### Health
+The service uses the OpenAI-compatible API — swap providers without changing any code:
 
-| Método | Rota      | Descrição                        |
-|--------|-----------|----------------------------------|
-| GET    | `/health` | Verifica se o serviço está ativo |
+| Provider | `LLM_BASE_URL` | `LLM_MODEL` | Cost |
+|---|---|---|---|
+| DeepSeek | `https://api.deepseek.com` | `deepseek-chat` | ~$0.14/1M tokens |
+| Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` | Free* |
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` | ~$0.15/1M tokens |
+| Ollama | `http://localhost:11434/v1` | `llama3.2` | Free (local) |
 
-**Resposta:**
-```json
-{
-  "status": "ok",
-  "timestamp": "2026-05-27T00:00:00.000000+00:00"
-}
-```
+\* Groq has rate limits on the free tier.
 
 ---
 
-### Scraper de trilhas
+## 📡 API Endpoints
 
-| Método | Rota         | Descrição                                                   |
-|--------|--------------|-------------------------------------------------------------|
-| POST   | `/ai/scrape` | Scrapa o roadmap.sh e popula as trilhas no banco via Java API |
+All endpoints are prefixed with `/ai`. The Java backend is the only caller — except for `/health`.
 
-O endpoint é executado de forma síncrona e pode levar alguns minutos. Recomendado rodar **uma única vez** para popular o banco.
-
-**Fluxo interno:**
-1. Acessa `https://roadmap.sh` e descobre dinamicamente **todas** as trilhas disponíveis via `window.__NEXT_DATA__` (fallback por links DOM)
-2. Para cada trilha descoberta:
-   - `GET /api/roadmaps/career/{careerType}` → verifica se já existe
-   - Se não existir → `POST /api/roadmaps` para criá-la automaticamente
-   - Scrapa os nós da página da trilha (`window.__NEXT_DATA__`, fallback DOM)
-   - `POST /api/roadmap-nodes` para cada nó encontrado
-
-**Trilhas:** descobertas automaticamente — todas as disponíveis no roadmap.sh na data da execução.
-
-**Resposta:**
-```json
-{
-  "status": "ok",
-  "summary": {
-    "backend": 42,
-    "frontend": 38,
-    "devops": 31,
-    "full-stack": 12,
-    "android": 27,
-    "ai-data-scientist": 25
-  },
-  "timestamp": "2026-05-27T00:00:00.000000+00:00"
-}
-```
+| Method | Route | Description | Called by |
+|---|---|---|---|
+| `GET` | `/health` | Service health check | Anyone |
+| `POST` | `/ai/flashcards/generate` | Generate flashcards via LLM | Java |
+| `POST` | `/ai/attempts` | Record a flashcard attempt | Java |
+| `POST` | `/ai/insights/{userId}` | Generate student study insights | Java |
+| `POST` | `/ai/insights/class/{classId}` | Generate class insights for advisor | Java |
+| `POST` | `/ai/scrape` | Scrape roadmap.sh and populate tracks | Java |
 
 ---
 
-### Flashcards — Geração com IA
+## 🧪 Tests
 
-| Método | Rota                      | Descrição                                       |
-|--------|---------------------------|-------------------------------------------------|
-| POST   | `/ai/flashcards/generate` | Gera flashcards com Claude e salva via Java API |
-| GET    | `/ai/review/{userId}`     | Retorna flashcards com revisão pendente (SM-2)  |
-
-**POST `/ai/flashcards/generate` — body:**
-```json
-{
-  "nodeId": "node-uuid",
-  "nodeTitle": "REST APIs",
-  "nodeDescription": "Princípios de design de APIs RESTful",
-  "quantity": 5
-}
-```
-
-**Resposta:**
-```json
-{
-  "nodeId": "node-uuid",
-  "flashcards": [
-    {
-      "question": "O que é REST?",
-      "answer": "Representational State Transfer",
-      "difficulty": "EASY"
-    }
-  ]
-}
-```
-
-**GET `/ai/review/{userId}` — resposta:**
-```json
-{
-  "userId": "user-uuid",
-  "cards": [
-    {
-      "id": "fc-uuid",
-      "nodeId": "node-uuid",
-      "question": "...",
-      "answer": "...",
-      "difficulty": "MEDIUM",
-      "nextReviewAt": "2026-05-27T00:00:00",
-      "easeFactor": 2.5,
-      "intervalDays": 6,
-      "repetitions": 2
-    }
-  ]
-}
-```
-
----
-
-### Análise de desempenho
-
-| Método | Rota                    | Descrição                                            |
-|--------|-------------------------|------------------------------------------------------|
-| GET    | `/ai/analysis/{userId}` | Retorna os tópicos com maior taxa de erro do usuário |
-
-**Resposta:**
-```json
-{
-  "userId": "user-uuid",
-  "weakTopics": [
-    {
-      "nodeId": "node-uuid",
-      "nodeTitle": "Algoritmos de Ordenação",
-      "errorRate": 0.75
-    }
-  ]
-}
-```
-
----
-
-## Banco de dados
-
-O serviço acessa o banco PostgreSQL **compartilhado com o Java API** — nenhuma tabela é criada.
-
-Tabelas utilizadas (somente leitura via SQL puro):
-
-| Tabela               | Uso                                                   |
-|----------------------|-------------------------------------------------------|
-| `flashcard_attempts` | Leitura para SM-2 (revisão pendente e taxa de erros)  |
-| `flashcards`         | Join para obter pergunta, resposta e dificuldade      |
-| `roadmap_nodes`      | Join para obter título do nó na análise de desempenho |
-
----
-
-## Testes
-
-### Pré-requisito para rodar os testes
-
-Os testes não precisam de banco, Redis nem Java rodando — tudo é mockado.
-
-Apenas instale as dependências:
+No database, Redis, or Java backend required — everything is mocked.
 
 ```bash
-pip install -r requirements.txt
-```
-
-### Rodar todos os testes
-
-```bash
-pytest tests/
-```
-
-### Com detalhes de cada teste
-
-```bash
+# Run all tests
 pytest tests/ -v
+
+# Quick pass check
+pytest tests/ -q
 ```
 
-### Com rastreamento de erros completo
-
-```bash
-pytest tests/ -v --tb=long
-```
-
-### Um módulo específico
-
-```bash
-pytest tests/test_spaced_repetition.py -v
-```
-
-### Verificar se todos passam antes de um commit
-
-```bash
-pytest tests/ -v --tb=short -q
-```
-
-### Módulos de teste
-
-| Arquivo                           | O que testa                                                        |
-|-----------------------------------|--------------------------------------------------------------------|
-| `tests/test_health.py`            | Endpoint `GET /health`                                             |
-| `tests/test_flashcards.py`        | `POST /ai/flashcards/generate` e `GET /ai/review/{userId}`         |
-| `tests/test_analysis.py`          | `GET /ai/analysis/{userId}`                                        |
-| `tests/test_llm_service.py`       | Geração de flashcards com LLM (mockado), parsing JSON, modelo usado |
-| `tests/test_scraper_service.py`   | Descoberta dinâmica de slugs, parsers `__NEXT_DATA__`/DOM, save    |
-| `tests/test_spaced_repetition.py` | Algoritmo SM-2 (6 casos) e queries SQL diretas (mockadas)          |
+| File | Covers |
+|---|---|
+| `test_health.py` | Health endpoint |
+| `test_flashcards.py` | Flashcard generation and review |
+| `test_attempts.py` | Attempt recording and error handling |
+| `test_insights.py` | Student and class AI insights |
+| `test_analysis.py` | Weak topics analysis |
+| `test_spaced_repetition.py` | HTTP client wrappers for spaced repetition |
+| `test_llm_service.py` | LLM service (mocked), JSON parsing |
+| `test_scraper_service.py` | Slug discovery, React Flow parser, HTTP save |
 
 ---
 
-## Arquitetura
+## 📁 Project Structure
 
 ```
 studgrasp-ai/
 ├── app/
-│   ├── main.py              # FastAPI app + error handler global
-│   ├── config.py            # pydantic-settings + lru_cache
-│   ├── database.py          # SQLAlchemy engine + get_db()
-│   ├── routers/             # Camada HTTP (recebe/responde apenas)
-│   │   ├── health.py
+│   ├── main.py              # FastAPI app + global error handler
+│   ├── config.py            # Settings via pydantic-settings
+│   ├── routers/             # HTTP layer
 │   │   ├── flashcards.py
+│   │   ├── attempts.py
+│   │   ├── insights.py
 │   │   ├── analysis.py
-│   │   └── scraper.py       # POST /ai/scrape
-│   ├── services/            # Lógica de negócio
-│   │   ├── llm_service.py         # Geração com LLM (provedor configurável)
-│   │   ├── spaced_repetition.py   # SM-2 + queries PostgreSQL
-│   │   └── scraper_service.py     # Playwright + get-or-create roadmap
-│   └── schemas/             # Modelos Pydantic
+│   │   └── scraper.py
+│   ├── services/            # Business logic
+│   │   ├── llm_service.py         # Flashcard + insight generation
+│   │   ├── spaced_repetition.py   # HTTP client wrappers for SM-2 data
+│   │   └── scraper_service.py     # roadmap.sh scraper
+│   └── schemas/             # Pydantic models
 │       ├── flashcard.py
-│       └── analysis.py
+│       ├── analysis.py
+│       └── insights.py
 ├── tasks/
-│   └── scraper_task.py      # Celery task (disparo manual)
+│   └── scraper_task.py      # Celery async scraper task
 ├── tests/
-│   ├── conftest.py
-│   └── test_*.py
 ├── .env.example
-└── requirements.txt
+└── docker-compose.yml
 ```
 
 ---
 
-## Padrão de erros
+## 📄 License
 
-Todos os erros retornam JSON no formato:
-
-```json
-{
-  "status": "error",
-  "message": "Descrição do erro em inglês",
-  "timestamp": "2026-05-27T00:00:00.000000+00:00"
-}
-```
+MIT
