@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     llm_model: str = "deepseek-chat"
 
     java_api_url: str = "http://localhost:8080"
+    scraper_api_key: str = ""
     db_url: str = "postgresql://studgrasp:studgrasp@localhost:5432/studgrasp"
     redis_url: str = "redis://localhost:6379"
 

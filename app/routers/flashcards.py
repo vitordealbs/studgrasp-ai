@@ -1,11 +1,9 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
 import httpx
 
 from app.config import get_settings, Settings
-from app.database import get_db
 from app.schemas.flashcard import (
     FlashcardGenerateRequest,
     FlashcardGenerateResponse,
@@ -68,10 +66,12 @@ async def generate_flashcards(
 @router.get("/review/{user_id}")
 async def get_review_flashcards(
     user_id: str,
-    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> JSONResponse:
     try:
-        cards = await spaced_repetition.get_due_flashcards(user_id=user_id, db=db)
+        cards = await spaced_repetition.get_due_flashcards(
+            user_id=user_id, java_api_url=settings.java_api_url
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=500,

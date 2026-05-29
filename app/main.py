@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.routers import health, flashcards, analysis, scraper
+from app.routers import health, flashcards, analysis, scraper, attempts, insights
 
 app = FastAPI(title="StudGrasp AI", version="2.0.0")
 
@@ -23,3 +23,5 @@ app.include_router(health.router)
 app.include_router(flashcards.router, prefix="/ai")
 app.include_router(analysis.router, prefix="/ai")
 app.include_router(scraper.router, prefix="/ai")
+app.include_router(attempts.router, prefix="/ai")
+app.include_router(insights.router, prefix="/ai")

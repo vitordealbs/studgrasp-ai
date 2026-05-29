@@ -1,13 +1,14 @@
 services:
   api:
     build: .
+    container_name: studgrasp-ai
     ports:
       - "8000:8000"
     env_file: .env
     environment:
       DB_URL: postgresql://studgrasp:studgrasp@postgres:5432/studgrasp
       REDIS_URL: redis://redis:6379
-      JAVA_API_URL: http://api:8080
+      JAVA_API_URL: http://studgrasp-api:8080
       SCRAPER_API_KEY: ${SCRAPER_API_KEY:-studgrasp-scraper-dev-key-change-in-production}
     networks:
       - studgrasp_network
@@ -19,7 +20,7 @@ services:
     environment:
       DB_URL: postgresql://studgrasp:studgrasp@postgres:5432/studgrasp
       REDIS_URL: redis://redis:6379
-      JAVA_API_URL: http://api:8080
+      JAVA_API_URL: http://studgrasp-api:8080
       SCRAPER_API_KEY: ${SCRAPER_API_KEY:-studgrasp-scraper-dev-key-change-in-production}
     networks:
       - studgrasp_network
